@@ -11,9 +11,10 @@ TWITTER_USERNAME = os.getenv("TWITTER_USERNAME")
 intents = discord.Intents.default()
 
 last_tweet_id = None
+user_id = None  # Cache user ID supaya gak request berulang
 
 async def check_tweets():
-    global last_tweet_id
+    global last_tweet_id, user_id
     await client.wait_until_ready()
     while not client.is_closed():
         print("[DEBUG] Mengecek tweet terbaru...")
@@ -22,25 +23,29 @@ async def check_tweets():
             "Authorization": f"Bearer {TWITTER_BEARER}"
         }
 
-        # Get user ID by username
-        user_res = requests.get(
-            f"https://api.twitter.com/2/users/by/username/{TWITTER_USERNAME}",
-            headers=headers
-        )
-        if user_res.status_code != 200:
-            print("❌ Gagal ambil user:", user_res.text)
-            await asyncio.sleep(60)
-            continue
+        # Request user ID sekali saja
+        if user_id is None:
+            user_res = requests.get(
+                f"https://api.twitter.com/2/users/by/username/{TWITTER_USERNAME}",
+                headers=headers
+            )
+            if user_res.status_code != 200:
+                print("❌ Gagal ambil user:", user_res.text)
+                await asyncio.sleep(60)
+                continue
+            user_id = user_res.json()["data"]["id"]
+            print(f"[DEBUG] User ID didapat: {user_id}")
 
-        user_id = user_res.json()["data"]["id"]
-
-        # Get latest tweet
         tweet_res = requests.get(
             f"https://api.twitter.com/2/users/{user_id}/tweets?max_results=5&tweet.fields=created_at&expansions=attachments.media_keys&media.fields=url,preview_image_url",
             headers=headers
         )
 
-        if tweet_res.status_code != 200:
+        if tweet_res.status_code == 429:
+            print("⚠️ Rate limit hit. Menunggu 5 menit sebelum coba lagi.")
+            await asyncio.sleep(300)  # Delay lama untuk menghindari ban
+            continue
+        elif tweet_res.status_code != 200:
             print("❌ Gagal ambil tweet:", tweet_res.text)
             await asyncio.sleep(60)
             continue
@@ -79,7 +84,7 @@ async def check_tweets():
         else:
             print(f"[DEBUG] Tidak ada tweet baru (sama dengan sebelumnya): {tweet_id}")
 
-        await asyncio.sleep(60)  # cek tiap 1 menit
+        await asyncio.sleep(120)  # Cek tiap 2 menit agar aman dari rate limit
 
 class MyClient(discord.Client):
     async def setup_hook(self):
@@ -90,3 +95,4 @@ class MyClient(discord.Client):
 
 client = MyClient(intents=intents)
 client.run(TOKEN)
+        
