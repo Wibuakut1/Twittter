@@ -37,7 +37,7 @@ async def check_tweets():
             print(f"[DEBUG] User ID didapat: {user_id}")
 
         tweet_res = requests.get(
-            f"https://api.twitter.com/2/users/{user_id}/tweets?max_results=5&tweet.fields=created_at&expansions=attachments.media_keys&media.fields=url,preview_image_url",
+            f"https://api.twitter.com/2/users/{user_id}/tweets?max_results=5&tweet.fields=created_at,referenced_tweets&expansions=attachments.media_keys&media.fields=url,preview_image_url",
             headers=headers
         )
 
@@ -57,11 +57,18 @@ async def check_tweets():
             continue
 
         tweet = data["data"][0]
+
+        # Filter hanya tweet asli (bukan reply atau retweet)
+        if "referenced_tweets" in tweet:
+            print("[DEBUG] Tweet ini reply/retweet, skip.")
+            await asyncio.sleep(120)
+            continue
+
         tweet_id = tweet["id"]
-        print(f"[DEBUG] Tweet terbaru ID: {tweet_id}")
+        print(f"[DEBUG] Tweet asli terbaru ID: {tweet_id}")
 
         if last_tweet_id is None or tweet_id != last_tweet_id:
-            print(f"[DEBUG] Kirim embed tweet baru: {tweet_id}")
+            print(f"[DEBUG] Kirim embed tweet asli baru: {tweet_id}")
             last_tweet_id = tweet_id
             tweet_url = f"https://twitter.com/{TWITTER_USERNAME}/status/{tweet_id}"
             embed = discord.Embed(
@@ -82,7 +89,7 @@ async def check_tweets():
             channel = client.get_channel(CHANNEL_ID)
             await channel.send(embed=embed)
         else:
-            print(f"[DEBUG] Tidak ada tweet baru (sama dengan sebelumnya): {tweet_id}")
+            print(f"[DEBUG] Tidak ada tweet asli baru (sama dengan sebelumnya): {tweet_id}")
 
         await asyncio.sleep(120)  # Cek tiap 2 menit agar aman dari rate limit
 
@@ -95,4 +102,4 @@ class MyClient(discord.Client):
 
 client = MyClient(intents=intents)
 client.run(TOKEN)
-        
+            
