@@ -52,27 +52,30 @@ async def check_tweets():
         tweet = data["data"][0]
         tweet_id = tweet["id"]
 
-        if tweet_id != last_tweet_id:
-            last_tweet_id = tweet_id
-            tweet_url = f"https://twitter.com/{TWITTER_USERNAME}/status/{tweet_id}"
-            embed = discord.Embed(
-                title=f"Tweet baru dari @{TWITTER_USERNAME}",
-                description=tweet["text"],
-                url=tweet_url,
-                color=0x1DA1F2
-            )
+if last_tweet_id is None or tweet_id != last_tweet_id:
+    print(f"[DEBUG] Mengirim tweet baru: {tweet_id}")
+    last_tweet_id = tweet_id
+    tweet_url = f"https://twitter.com/{TWITTER_USERNAME}/status/{tweet_id}"
+    embed = discord.Embed(
+        title=f"Tweet baru dari @{TWITTER_USERNAME}",
+        description=tweet["text"],
+        url=tweet_url,
+        color=0x1DA1F2
+    )
 
-            # Tambahkan media jika ada
-            if "includes" in data and "media" in data["includes"]:
-                media = data["includes"]["media"][0]
-                if "url" in media:
-                    embed.set_image(url=media["url"])
-                elif "preview_image_url" in media:
-                    embed.set_image(url=media["preview_image_url"])
+    # Tambahkan media jika ada
+    if "includes" in data and "media" in data["includes"]:
+        media = data["includes"]["media"][0]
+        if "url" in media:
+            embed.set_image(url=media["url"])
+        elif "preview_image_url" in media:
+            embed.set_image(url=media["preview_image_url"])
 
-            channel = client.get_channel(CHANNEL_ID)
-            await channel.send(embed=embed)
-
+    channel = client.get_channel(CHANNEL_ID)
+    await channel.send(embed=embed)
+else:
+    print(f"[DEBUG] Tidak ada tweet baru. Tweet terakhir: {tweet_id}")
+    
         await asyncio.sleep(60)  # cek tiap 1 menit
 
 class MyClient(discord.Client):
