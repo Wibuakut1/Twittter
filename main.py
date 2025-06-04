@@ -9,7 +9,6 @@ TWITTER_BEARER = os.getenv("TWITTER_BEARER_TOKEN")
 TWITTER_USERNAME = os.getenv("TWITTER_USERNAME")
 
 intents = discord.Intents.default()
-client = discord.Client(intents=intents)
 
 last_tweet_id = None
 
