@@ -86,10 +86,14 @@ async def check_tweets():
             print(f"Error: {e}")
 
         await asyncio.sleep(60)
+import asyncio
 
-@client.event
-async def on_ready():
-    print(f'✅ Bot {client.user} is now running.')
+class MyClient(discord.Client):
+    async def setup_hook(self):
+        self.bg_task = asyncio.create_task(check_tweets())
 
-client.loop.create_task(check_tweets())
+    async def on_ready(self):
+        print(f'✅ Bot {self.user} is now running.')
+
+client = MyClient(intents=intents)
 client.run(DISCORD_TOKEN)
