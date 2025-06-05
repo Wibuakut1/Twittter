@@ -2,6 +2,8 @@ import os
 import discord
 import requests
 import asyncio
+from flask import Flask
+from threading import Thread
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
@@ -12,6 +14,20 @@ intents = discord.Intents.default()
 
 last_tweet_id = None
 user_id = None  # Cache user ID supaya gak request berulang
+
+# Flask app untuk keep-alive di Render
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is running"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
 
 async def check_tweets():
     global last_tweet_id, user_id
@@ -87,7 +103,10 @@ async def check_tweets():
                     embed.set_image(url=media["preview_image_url"])
 
             channel = client.get_channel(CHANNEL_ID)
-            await channel.send(embed=embed)
+            if channel:
+                await channel.send(embed=embed)
+            else:
+                print(f"[ERROR] Channel ID {CHANNEL_ID} tidak ditemukan.")
         else:
             print(f"[DEBUG] Tidak ada tweet asli baru (sama dengan sebelumnya): {tweet_id}")
 
@@ -100,6 +119,7 @@ class MyClient(discord.Client):
     async def on_ready(self):
         print(f'✅ Bot {self.user} is now running.')
 
+keep_alive()
 client = MyClient(intents=intents)
 client.run(TOKEN)
-            
+        
